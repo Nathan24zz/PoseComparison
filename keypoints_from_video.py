@@ -43,13 +43,13 @@ def main():
 				image = cv2.resize(image,(372,495))			
 				input_points,input_black_image = a.getpoints_vis(image,sess,model_cfg,model_outputs)
 				input_points = input_points[0:34]
-				print(input_points)
+				# print(input_points)
 				input_new_coords = a.roi(input_points)
 				input_new_coords = input_new_coords[0:34]
 				input_new_coords = np.asarray(input_new_coords).reshape(17,2)
 				b.append(input_new_coords)
-				cv2.imshow("black", input_black_image)
-				cv2.waitKey(1)
+				# cv2.imshow("black", input_black_image)
+				# cv2.waitKey(1)
 				i = i + 1
 			else:
 				break
