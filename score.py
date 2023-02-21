@@ -21,7 +21,7 @@ class Score(object):
 		return input_test
 
 	def compare(self,ip,model,i,j):
-		ip = self.normalize(ip)
+		# ip = self.normalize(ip)
 		scores = []
 		for k in range(0,17):
 			scores.append(self.dtwdis(ip[:,k],model[:,k],i,j))	
