@@ -14,8 +14,27 @@ import posenet
 from score import Score
 
 
-def reduce_keypoints_posenet(num_keypoints):
-    pass
+def reduce_human_keypoints_posenet(keypoints):
+    # keypoints_classes_ids2names = {0: 'NOSE', 1: 'LEFT_EYE', 2: 'RIGHT_EYE', 3: 'LEFT_EAR', 4: 'RIGHT_EAR', 5: 'LEFT_SHOULDER', 6:'RIGHT_SHOULDER', 7:'LEFT_ELBOW', 8:'RIGHT_ELBOW', 9:'LEFT_WRIST', 10:'RIGHT_WRIST', 11:'LEFT_HIP', 12:'RIGHT_HIP' ,13:'LEFT_KNEE', 14:'RIGHT_KNEE',15:'LEFT_ANKLE', 16:'RIGHT_ANKLE'}
+    # 0: 'Head', 1: 'Trunk', 2: 'RH', 3: 'LH', 4: 'RF', 5: 'LF'}
+    
+    head = [(keypoints[1][0] + keypoints[2][0]) / 2, (keypoints[1][1] + keypoints[2][1]) / 2]
+    right_hand = keypoints[10]
+    left_hand = keypoints[9]
+    right_foot = keypoints[16]
+    left_foot = keypoints[15]
+
+    y_trunk_lmid = (keypoints[5][1] + keypoints[11][1]) * 1 / 2
+    y_trunk_llower = (y_trunk_lmid + keypoints[11][1]) / 2
+    y_trunk_rmid = (keypoints[6][1] + keypoints[12][1]) * 1 / 2
+    y_trunk_rlower = (y_trunk_rmid + keypoints[11][1]) / 2
+    y_trunk = (y_trunk_llower + y_trunk_rlower) / 2
+    trunk = [(keypoints[11][0] + keypoints[12][0]) / 2, y_trunk]
+    
+    reduced_keypoints = [head, trunk, right_hand, left_hand, right_foot, left_foot]
+    return reduced_keypoints
+    # print(np.asarray(reduced_keypoints).shape)
+    # print(np.asarray(reduced_keypoints))
 
 def load_human_posenet_model():
     with tf.compat.v1.Session() as sess:
@@ -24,12 +43,11 @@ def load_human_posenet_model():
 def human_posenet_detection(image, image_points, model_cfg, model_outputs):
     a = Pose()
 
-    with tf.compat.v1.Session() as sess:
-        # model_cfg, model_outputs = posenet.load_model(101, sess)
-        
+    with tf.compat.v1.Session() as sess:        
         input_points = a.getpoints(image, sess, model_cfg, model_outputs)
         input_for_viz = np.array(input_points[0:34]).reshape(17,2)
-        image_points.append(input_for_viz)
+        image_points.append(reduce_human_keypoints_posenet(input_for_viz))
+        
         # print(np.asarray(image_points).shape)
         # print(np.asarray(image_points))
         visualize(image, keypoints=np.array(image_points))
@@ -82,6 +100,10 @@ def robot_rcnn_detection(image, model):
 
     visualize(orig_frame, bboxes, keypoints)
     cv2.imwrite('image_2.jpg', orig_frame)
+    # # reinitialize image_points
+    # image_points = []
+    # input_new_coords = np.asarray(a.roi(input_points)[0:34]).reshape(17,2)
+    # image_points.append(input_new_coords)
     
         
 def visualize(image, bboxes=None, keypoints=None):
@@ -128,12 +150,16 @@ def main(args=None):
 
     human_posenet_detection(img1, image_1_points, model_cfg, model_outputs)
     robot_rcnn_detection(img2, robot_model)
-#     human_posenet_detection(img2, image_2_points, model_cfg, model_outputs)
 
-#     final_score, score_list = s.compare(np.asarray(image_1_points),np.asarray(image_2_points),1,1)
-#     print("Total Score : ",final_score)
-#     print("Score List : ",score_list)
-#     print("Body Pose Average: ", sum(score_list[5:])/len(score_list[5:]))
+    # print(np.asarray(image_1_points).shape)
+    # print(np.asarray(image_1_points))
+    # print(np.asarray(image_2_points).shape)
+    # print(np.asarray(image_2_points))
+    
+    # final_score, score_list = s.compare(np.asarray(image_1_points),np.asarray(image_2_points),1,1)
+    # print("Total Score : ",final_score)
+    # print("Score List : ",score_list)
+    # print("Body Pose Average: ", sum(score_list[5:])/len(score_list[5:]))
     #####################################
 
 if __name__ == '__main__':
