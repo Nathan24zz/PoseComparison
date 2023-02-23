@@ -8,6 +8,7 @@ import tensorflow as tf
 import torch
 import torchvision
 from torchvision.models.detection.rpn import AnchorGenerator
+import itertools
 
 from pose import Pose
 import posenet
@@ -33,30 +34,29 @@ def reduce_human_keypoints_posenet(keypoints):
     
     reduced_keypoints = [head, trunk, right_hand, left_hand, right_foot, left_foot]
     return reduced_keypoints
-    # print(np.asarray(reduced_keypoints).shape)
-    # print(np.asarray(reduced_keypoints))
 
 def load_human_posenet_model():
     with tf.compat.v1.Session() as sess:
         return posenet.load_model(101, sess)
     
-def human_posenet_detection(image, image_points, model_cfg, model_outputs):
+def human_posenet_detection(image, model_cfg, model_outputs):
     a = Pose()
 
-    with tf.compat.v1.Session() as sess:        
+    with tf.compat.v1.Session() as sess:
+        image_points = []
+        
         input_points = a.getpoints(image, sess, model_cfg, model_outputs)
         input_for_viz = np.array(input_points[0:34]).reshape(17,2)
         image_points.append(reduce_human_keypoints_posenet(input_for_viz))
         
-        # print(np.asarray(image_points).shape)
-        # print(np.asarray(image_points))
         visualize(image, keypoints=np.array(image_points))
         cv2.imwrite('image_1.jpg', image)
-        # reinitialize image_points
-        image_points = []
-        input_new_coords = np.asarray(a.roi(input_points)[0:34]).reshape(17,2)
-        image_points.append(input_new_coords)
+        merged = list(itertools.chain.from_iterable(image_points[0]))
         
+        input_new_coords = np.asarray(a.robot_roi(merged)).reshape(6,2)
+        image_points = []
+        image_points.append(input_new_coords)
+        return image_points
 
 def load_robot_rcnn_model():
     device = torch.device('cpu')
@@ -75,6 +75,8 @@ def load_robot_rcnn_model():
     return model_
 
 def robot_rcnn_detection(image, model):
+    a = Pose()
+    
     device = torch.device('cpu')
     with torch.no_grad():
         orig_frame = image.copy()
@@ -100,10 +102,14 @@ def robot_rcnn_detection(image, model):
 
     visualize(orig_frame, bboxes, keypoints)
     cv2.imwrite('image_2.jpg', orig_frame)
-    # # reinitialize image_points
-    # image_points = []
-    # input_new_coords = np.asarray(a.roi(input_points)[0:34]).reshape(17,2)
-    # image_points.append(input_new_coords)
+
+    merged = list(itertools.chain.from_iterable(keypoints[0]))
+    
+    # reinitialize image_points
+    image_points = []
+    input_new_coords = np.asarray(a.robot_roi(merged)).reshape(6,2)
+    image_points.append(input_new_coords)
+    return image_points
     
         
 def visualize(image, bboxes=None, keypoints=None):
@@ -148,18 +154,18 @@ def main(args=None):
     img1 = cv2.imread(args['image1'], cv2.IMREAD_COLOR)
     img2 = cv2.imread(args['image2'], cv2.IMREAD_COLOR)
 
-    human_posenet_detection(img1, image_1_points, model_cfg, model_outputs)
-    robot_rcnn_detection(img2, robot_model)
+    image_1_points = human_posenet_detection(img1, model_cfg, model_outputs)
+    image_2_points = robot_rcnn_detection(img2, robot_model)
 
-    # print(np.asarray(image_1_points).shape)
-    # print(np.asarray(image_1_points))
-    # print(np.asarray(image_2_points).shape)
-    # print(np.asarray(image_2_points))
+    print(np.asarray(image_1_points).shape)
+    print(np.asarray(image_1_points))
+    print(np.asarray(image_2_points).shape)
+    print(np.asarray(image_2_points))
     
-    # final_score, score_list = s.compare(np.asarray(image_1_points),np.asarray(image_2_points),1,1)
-    # print("Total Score : ",final_score)
-    # print("Score List : ",score_list)
-    # print("Body Pose Average: ", sum(score_list[5:])/len(score_list[5:]))
+    final_score, score_list = s.compare(np.asarray(image_1_points),np.asarray(image_2_points),1,1)
+    print("Total Score : ",final_score)
+    print("Score List : ",score_list)
+    print("Body Pose Average: ", sum(score_list[2:])/len(score_list[2:]))
     #####################################
 
 if __name__ == '__main__':
