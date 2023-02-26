@@ -23,7 +23,7 @@ class Score(object):
 	def compare(self,ip,model,i,j):
 		# ip = self.normalize(ip)
 		scores = []
-		for k in range(0,17):
+		for k in range(0,6):
 			scores.append(self.dtwdis(ip[:,k],model[:,k],i,j))	
 		return np.mean(scores),scores
 
