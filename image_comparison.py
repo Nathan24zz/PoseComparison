@@ -1,4 +1,4 @@
-# USAGE : python3 image_comparison.py --image1 image/stand.jpg --image2 image/1079.jpg
+# USAGE : python image_comparison.py --image1 image/t_pose.jpg --image2 image/1079.jpg --robot_path _models/keypointsrcnn_weights_no_rotation.pth
 
 import argparse
 import cv2
@@ -58,7 +58,7 @@ def human_posenet_detection(image, model_cfg, model_outputs):
         image_points.append(input_new_coords)
         return image_points
 
-def load_robot_rcnn_model():
+def load_robot_rcnn_model(path):
     device = torch.device('cpu')
     anchor_generator = AnchorGenerator(sizes=(32, 64, 128, 256, 512), aspect_ratios=(0.25, 0.5, 0.75, 1.0, 2.0, 3.0, 4.0))
     model_ = torchvision.models.detection.keypointrcnn_resnet50_fpn(pretrained=False,
@@ -69,7 +69,7 @@ def load_robot_rcnn_model():
 
     # load the model checkpoint
     with torch.no_grad():
-        model_.load_state_dict(torch.load('/drive0-storage/robot_pose/keypoint_rcnn_training_pytorch-main/keypointsrcnn_weights_no_rotation.pth'))
+        model_.load_state_dict(torch.load(path))
         model_.to(device)
         model_.eval()
     return model_
@@ -135,10 +135,9 @@ def visualize(image, bboxes=None, keypoints=None):
 
 def main(args=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("-i1", "--image1", required=True,
-        help="image file to be scored")
-    ap.add_argument("-i2", "--image2", required=True,
-        help="image file to be scored")
+    ap.add_argument("-i1", "--image1", required=True, help="image file to be scored")
+    ap.add_argument("-i2", "--image2", required=True, help="image file to be scored")
+    ap.add_argument("--robot_path", required=True, help="path for robot model")
     args = vars(ap.parse_args())
 
     s = Score()
@@ -147,7 +146,7 @@ def main(args=None):
     
     # load model
     model_cfg, model_outputs = load_human_posenet_model()
-    robot_model = load_robot_rcnn_model()
+    robot_model = load_robot_rcnn_model(args['robot_path'])
     
     # looping section if we want real time
     #################################### 
@@ -165,7 +164,7 @@ def main(args=None):
     final_score, score_list = s.compare(np.asarray(image_1_points),np.asarray(image_2_points),1,1)
     print("Total Score : ",final_score)
     print("Score List : ",score_list)
-    print("Body Pose Average: ", sum(score_list[2:])/len(score_list[2:]))
+    print("Body Pose Average: ", sum(np.absolute(score_list[2:]))/len(score_list[2:]))
     #####################################
 
 if __name__ == '__main__':
